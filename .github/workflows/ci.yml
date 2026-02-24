@@ -1,0 +1,107 @@
+# CI vérif auto code est propre, passe les tests et est maintenable avant CD
+# S'éxé à chaque push/PR sans déploy, secrets et modif d'env externes
+---
+name: CI Pipeline
+
+# Déclencheurs
+# Lance le workflow à chaque push sur main, develop et à chaque pull request
+# vers main si PR change.
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+    types: [synchronize, opened]
+
+# Variables d'environnement globales
+env:
+  PYTHON_VERSION: "3.12"
+  POETRY_VERSION: "2.0.1"
+
+# Jobs
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    # étapes du lint
+    steps:
+      # Clone le dépôt dans le runner
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # Configure python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # Installe les outils de lint
+      - name: Install lit tool Ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      # Erreurs affichées dans l'onglet "Annotations" du PR GitHub
+      - name: Run Ruff Check (Linter + Imports)
+        run: ruff check app/ tests/ --output-format=github
+
+      - name: Run Ruff Format (Style)
+        run: ruff format app/ tests/ --check
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    # Oblige la validation de lint avant
+    needs: lint
+    env:
+      # on déf les variables pour les utiliser dans le test
+      POSTGRES_USER_TEST: ${{ secrets.POSTGRES_USER_TEST }}
+      POSTGRES_PASSWORD_TEST: ${{ secrets.POSTGRES_PASSWORD_TEST }}
+      POSTGRES_DB_TEST: ${{ secrets.POSTGRES_DB_TEST }}
+      # inutile car on est obligé d'utiliser localhost et 5432
+      # POSTGRES_HOST_TEST: ${{ secrets.POSTGRES_HOST_TEST }}
+      # POSTGRES_PORT_TEST: ${{ secrets.POSTGRES_PORT_TEST }}
+    services:
+      # service lance un conteneur docker séparé d'où l'env a réiterer
+      # postgre attend nécéssairement les variables nommés ci-dessous (d'ou pas de _TEST)
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER_TEST }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD_TEST }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB_TEST }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "poetry"
+      # Installe les dépendances
+      - name: Install dependencies
+        run: poetry install --with dev
+      # Lance les tests avec coverage
+      - name: Run tests with coverage
+        env:
+          # On utilise les infos du service Docker ci-dessus
+          DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER_TEST }}:${{ secrets.POSTGRES_PASSWORD_TEST }}@localhost:5432/${{ secrets.POSTGRES_DB_TEST }} #noqa: E501
+        run: |
+          poetry run python -m pytest --cov=app --cov-config=coverage.ini --cov-report=html
+
+      - name: Archive coverage report
+        uses: actions/upload-artifact@v4
+        # Garde le rapport même si un test échoue
+        if: always()
+        with:
+          name: coverage-report
+          path: htmlcov/

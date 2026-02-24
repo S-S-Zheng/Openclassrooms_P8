@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": ".venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "jupyter.defaultKernel": "Python (livrable_P8)",
+  "editor.formatOnSave": true,
+  "python.analysis.typeCheckingMode": "basic"
+}

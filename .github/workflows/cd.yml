@@ -1,0 +1,105 @@
+# CD pour déploiement auto du code validé vers Hugging Face Spaces
+# S'éxé après CI validée seulement sur main
+---
+name: CD Pipeline
+
+# Déclencheurs
+# Lance le workflow seulement si succès du workflow CI
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    branches:
+      - main
+    types:
+      - completed
+
+# Permissions nécessaires pour le workflow
+permissions:
+  contents: read
+
+# Jobs
+jobs:
+  # job de déploiement
+  deploy:
+    name: Deploy to Hugging Face Spaces
+    runs-on: ubuntu-latest
+    # Le déploiement ne se fait que si ci est un succès et sur la branche main
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    # Déf des secrets au niveau du job deploy pour acces dans tous les steps
+    env:
+      HF_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+      HF_USERNAME: ${{ secrets.HUGGINGFACE_USERNAME }}
+      HF_SPACE_NAME: ${{ secrets.HUGGINGFACE_SPACE_NAME }}
+      # Les secret Supabase sont a mettre dans HF
+      # SB_USER: ${{ secrets.SB_USER }}
+      # SB_PASSWORD: ${{ secrets.SB_PASSWORD }}
+      # SB_DB: ${{ secrets.SB_DB }}
+      # SB_HOST: ${{ secrets.SB_HOST }}
+      # SB_PORT: ${{ secrets.SB_PORT }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Clone tout l'historique du dépôt
+        with:
+          fetch-depth: 0
+          # telecharge le vrai fichier pkl et pas le pointeur LFS
+          lfs: true
+      - name: Install Git LFS
+        run: git lfs install
+      # Au lieu de faire 50 'cp', on utilise rsync pour exclure le superflu
+      # On garde la structure intacte, c'est Docker qui fera le tri final
+      - name: Prepare HF config md
+        run: |
+          cat << EOF > README.md
+          ---
+          title: API for Prêt à dépenser
+          emoji: 🚀
+          colorFrom: red
+          colorTo: red
+          sdk: docker
+          app_port: 7860
+          tags:
+          - streamlit
+          pinned: true
+          license: mit
+          ---
+          EOF
+
+      # La méthode la plus simple pour HF : Pousser tout le repo.
+      # Le Dockerfile et le .dockerignore s'occuperont de faire le tri
+      - name: Push to HF
+        env:
+          HF_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
+          HF_REPO: ${{ secrets.HUGGINGFACE_USERNAME }}/${{ secrets.HUGGINGFACE_SPACE_NAME }}
+        run: |
+          # On ajoute la destination (HF) au repo GitHub actuel
+          git remote add hf https://x-access-token:$HF_TOKEN@huggingface.co/spaces/$HF_REPO
+          # Configuration Git
+          git config --global user.email "actions@github.com"
+          git config --global user.name "Github Actions"
+
+          # On initialise LFS
+          git lfs install
+          # On "dé-indexe" le fichier s'il a été ajouté par erreur en binaire
+          git rm --cached datas/results/model/best_model.pkl || echo "Fichier pas encore indexé"
+          # On configure le tracking LFS AVANT d'ajouter le fichier
+          git lfs track "datas/results/**/*.pkl"
+          git add .gitattributes
+          # On ré-ajoute le modèle (cette fois Git sait que c'est du LFS)
+          git add datas/results/model/best_model.pkl
+
+          # On ajoute le README modifié (seul fichier dynamique)
+          git add README.md
+
+          # Le "|| echo" évite que le job crash s'il n'y a rien à commit
+          git commit -m "Update HF Metadata" || echo "No changes to commit"
+          # On pousse de GitHub (main) vers HF (main)
+          git branch -M main
+          git push hf main --force
+      - name: Notify deployment
+        if: success()
+        run: |
+          echo "Déploiement réussi sur Hugging Face Spaces"
+          echo "URL: https://huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}"

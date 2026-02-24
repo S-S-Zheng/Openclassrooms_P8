@@ -1,0 +1,13 @@
+# Profil valeurs abérrantes
+_profile_name: "outliers"
+expected_status: 422
+features:
+  EXT_SOURCE_COUNT: 0.0
+  DAYS_EMPLOYED: 0.0
+  DAYS_BIRTH: -8000
+  AMT_ANNUITY: 247000.5
+  PAYMENT_RATE: 0.023
+  PREV_DAYS_LAST_DUE_1ST_VERSION_MAX: 3000.0
+  BUREAU_AMT_CREDIT_SUM_DEBT_MEAN: 4.3e7
+  OWN_CAR_AGE: 91.0
+  NAME_FAMILY_STATUS: "Alone"

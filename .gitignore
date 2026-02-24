@@ -1,0 +1,47 @@
+# OS
+.DS_Store
+Thumbs.db
+# Editeurs
+*.swp
+*.swo
+# Logs
+*.log
+.ruff_cache/
+# Environnement
+.env
+.envrc
+.venv
+.env/
+.venv/
+.ENV/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env.test
+# Python
+__pycache__/
+*.pyc
+*.pyo
+# Jupyter
+.ipynb_checkpoints/
+# Anaconda
+anaconda_projects/
+# VS Code
+# A décommenter si on veut que VsCode soit configuré immédiatement après un git git clone
+# .vscode/
+# PyCharm
+.idea/
+# Poetry
+poetry.toml
+# Pytest
+.pytest*
+# Sphinx
+docs/build/
+docs/_build/
+# Autres
+db_connection_test.py
+htmlcov
+.coverage
+datas/raw/
