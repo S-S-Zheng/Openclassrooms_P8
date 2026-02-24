@@ -20,7 +20,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 -
 WORKDIR /app
 
 # Copie des fichiers de config uniquement (pour le cache Docker)
-COPY pyproject.toml ./ 
+COPY pyproject.toml poetry.lock ./ 
 # Note : on ne copie pas encore le code pour optimiser le cache des layers
 RUN /root/.local/bin/poetry install --only main --no-root
 

@@ -7,6 +7,15 @@
 .DS_Store
 *.swp
 .github/
+.vscode/
+
+# Logs & DB locales
+*.log
+*.sqlite
+
+# Dossiers Poetry/Dependency managers (si présents)
+.python-version
+poetry.toml
 
 # --- Python / Dev ---
 __pycache__/
@@ -22,6 +31,7 @@ pip-delete-this-directory.txt
 *.pyc
 .venv/
 
+
 # --- Tests & Qualité ---
 tests/
 .pytest_cache/
@@ -33,6 +43,7 @@ coverage.xml
 *.lprof
 coverage.ini
 pytest.ini
+coverage.ini
 
 # --- Build / Dist ---
 build/

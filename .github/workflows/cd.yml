@@ -82,22 +82,61 @@ jobs:
 
           # On initialise LFS
           git lfs install
-          # On "dé-indexe" le fichier s'il a été ajouté par erreur en binaire
-          git rm --cached datas/results/model/best_model.pkl || echo "Fichier pas encore indexé"
-          # On configure le tracking LFS AVANT d'ajouter le fichier
-          git lfs track "datas/results/**/*.pkl"
+
+          # # Nettoyage de l'index pour corriger le problème du .gitattributes illisible
+          # # On dé-indexe le modèle et le fichier d'attributs corrompu
+          # git rm --cached datas/results/model/best_model.pkl || echo "Fichier déjà hors index"
+          # git rm --cached .gitattributes || echo "Attributs déjà hors index"
+
+          # # Ré-écriture PROPRE du .gitattributes (une règle par ligne)
+          # # On force les extensions critiques pour ton projet
+          # cat << EOF > .gitattributes
+          # *.pkl filter=lfs diff=lfs merge=lfs -text
+          # *.joblib filter=lfs diff=lfs merge=lfs -text
+          # *.parquet filter=lfs diff=lfs merge=lfs -text
+          # EOF
+
+          # # On ré-indexe avec les bonnes règles
+          # git lfs track "*.pkl"
+          # git add .gitattributes
+          # git add datas/results/model/best_model.pkl
+          # git add README.md
+          # # On ajoute le reste (Dockerfile, app, etc.)
+          # git add .
+
+          # # On ajoute le README modifié (seul fichier dynamique)
+          # git add README.md
+
+          # # Le "|| echo" évite que le job crash s'il n'y a rien à commit
+          # git commit -m "Update HF Metadata" || echo "No changes to commit"
+          # # On pousse de GitHub (main) vers HF (main)
+          # git branch -M main
+          # git push hf main --force
+
+          # ==============================================================
+          # --- LA CORRECTION CLÉ ---
+          # On "écrase" l'historique local du runner pour n'avoir qu'un seul commit.
+          # Cela supprime les anciens commits où le binaire n'était pas en LFS.
+          git checkout --orphan temp-main
+
+          # Nettoyage et ré-écriture propre du .gitattributes
+          git rm -rf --cached .
+          cat << EOF > .gitattributes
+          *.pkl filter=lfs diff=lfs merge=lfs -text
+          *.joblib filter=lfs diff=lfs merge=lfs -text
+          *.parquet filter=lfs diff=lfs merge=lfs -text
+          EOF
+
+          # On ajoute tout : Git voit le .gitattributes en premier et traite le .pkl en LFS
           git add .gitattributes
-          # On ré-ajoute le modèle (cette fois Git sait que c'est du LFS)
-          git add datas/results/model/best_model.pkl
-
-          # On ajoute le README modifié (seul fichier dynamique)
           git add README.md
+          git add .
 
-          # Le "|| echo" évite que le job crash s'il n'y a rien à commit
-          git commit -m "Update HF Metadata" || echo "No changes to commit"
-          # On pousse de GitHub (main) vers HF (main)
-          git branch -M main
-          git push hf main --force
+          git commit -m "Deploy clean state to HF" || echo "No changes"
+
+          # On force le push vers la branche main de HF
+          git push hf temp-main:main --force
+
       - name: Notify deployment
         if: success()
         run: |
