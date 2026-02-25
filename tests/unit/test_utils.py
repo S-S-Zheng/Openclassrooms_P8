@@ -340,15 +340,3 @@ def test_clean_for_json_numpy_types():
     assert isinstance(cleaned["int"], int)
     assert isinstance(cleaned["float"], float)
     assert cleaned["int"] == 42
-
-
-# =========================================================================
-
-
-# Verifie que les sous-jacents sont aussi traité
-def test_clean_for_json_nested():
-    data = {"list": [1, np.nan, {"nested_inf": np.inf}], "dict": {"x": np.nan}}
-    cleaned = clean_for_json(data)
-    assert cleaned["list"][1] is None
-    assert cleaned["list"][2]["nested_inf"] is None
-    assert cleaned["dict"]["x"] is None

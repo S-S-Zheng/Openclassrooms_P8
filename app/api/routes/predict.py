@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.api.schemas import PredictionInput, PredictionOutput
 from app.db.database import get_db
 from app.utils.clean_for_json_db import clean_for_json
-from app.utils.inference_process import prediction_pipeline
+from app.utils.inference_process import batch_prediction_pipeline, prediction_pipeline
 from app.utils.input_preproc import InputPreproc
 from app.utils.logger_db import closing_log, init_log
 
@@ -111,30 +111,9 @@ async def predict_file(
     request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)
 ):
     """
-    Inférence de masse via fichier CSV ou Parquet.
-
-    Cette méthode suit la pipeline suivante :
-
-    1. **Logging** : Initialisation d'un enregistrement dans 'request_logs'.
-    2. **Mise en cache** : Vérification si les caractéristiques ont déjà été traitées
-       (via un hash SHA-256) pour retourner un résultat instantané.
-    3. **Inférence** : Si nouveau, appel de la méthode predict du modèle chargé.
-    4. **Persistance** : Sauvegarde des entrées et de la sortie dans 'predictions'.
-    5. **Finalisation** : Calcul du temps de réponse et mise à jour du log.
-
-    Args:
-        request (Request): Objet requête FastAPI pour accéder au modèle global.
-        file (UploadFile): Le fichier de donnée à charger
-        db (Session): Session de base de données injectée par dépendance.
-
-    Returns:
-        PredictionOutput: Résultat comprenant la prédiction (0/1), le score de
-        confiance et le nom de la classe.
-
-    Raises:
-        HTTPException: 503 si le modèle n'est pas chargé.
-        HTTPException: 422 en cas d'erreur de valeur lors de l'inférence.
-        HTTPException: 500 pour les erreurs serveur imprévues.
+    Inférence de masse via fichier CSV ou Parquet. Si il y a trop d'inférence à réaliser (on a
+    choisi arbitrairement 100), le router passe en mode batch predict il va insérer par paquet
+    (Bulk Insert) et faire de l'inférence vectorisée.
     """
     # On initialise le temps et le log
     start_time = time.time()
@@ -157,68 +136,43 @@ async def predict_file(
         # -----------------------------------------------------
 
         preproc = InputPreproc(model_instance.feature_names)
-        results = []
-        total_inference_time = 0.0  # Pour cumuler le temps
 
-        # ==================== Condition sequentiel/paquet mais problemes avec
-        # sauvegarde, log, id etc.... a revoir =================================
+        # ============= Sequentiel simple ===================
+        if len(df) <= 100:
+            results = []
+            total_inference_time = 0.0  # Pour cumuler le temps
+            for _, row in df.iterrows():
+                # data_dict = row.to_dict()
+                # NETTOYAGE JSON de la ligne avant envoi au pipeline
+                data_dict = clean_for_json(row.to_dict())
 
-        # # Sequentiel si le nombre de ligne n'excede pas 1000 car sinon extremement lourd
-        # # de predict and save ==> on marche par paquet alors
-        # if len(df)<=1000:
-        #     for _, row in df.iterrows():
-        #         data_dict = row.to_dict()
-        #         # Utilisation du pipeline pour chaque ligne du fichier
-        #         output, _ = prediction_pipeline(
-        #             db=db,
-        #             model_instance=model_instance,
-        #             preproc=preproc,
-        #             raw_data=data_dict,
-        #             log_id=cast(int, log_entry.id)
-        #         )
-        #         results.append(output)
-        # else:
-        #     # Preprocessing de tout le bloc
-        #     df_preproc = preproc.process(df)
+                # Utilisation du pipeline pour chaque ligne du fichier
+                output, _, inference_time = prediction_pipeline(
+                    db=db,
+                    model_instance=model_instance,
+                    preproc=preproc,
+                    raw_data=data_dict,  # type:ignore
+                    log_id=cast(int, log_entry.id),
+                )
+                results.append(output)
+                total_inference_time += inference_time
 
-        #     # Inférence vectorisée (perf +++)
-        #     # predict_proba renvoie [prob_classe_0, prob_classe_1]
-        #     probas = model_instance.model.predict_proba(df_preproc)[:, 1]
-        #     # Application du seuil métier
-        #     preds = (probas >= model_instance.threshold).astype(int)
-
-        #     # Formatage des résultats
-        #     for i in range(len(df)):
-        #         results.append(PredictionOutput(
-        #             prediction=int(preds[i]),
-        #             confidence=float(probas[i]),
-        #             class_name="solvable" if preds[i] == 1 else "insolvable"
-        #         ))
-        # ===============================================================
-
-        # Sequentiel simple
-        for _, row in df.iterrows():
-            # data_dict = row.to_dict()
-            # NETTOYAGE JSON de la ligne avant envoi au pipeline
-            data_dict = clean_for_json(row.to_dict())
-
-            # Utilisation du pipeline pour chaque ligne du fichier
-            output, _, inference_time = prediction_pipeline(
+        # ====================== Batch predict =========================
+        else:
+            results, total_inference_time = batch_prediction_pipeline(
                 db=db,
                 model_instance=model_instance,
                 preproc=preproc,
-                raw_data=data_dict,  # type:ignore
+                df=df,
                 log_id=cast(int, log_entry.id),
             )
-            results.append(output)
-            total_inference_time += inference_time
 
         closing_log(
             db,
             log_entry,
             start_time,
             status_code=200,
-            inference_time=total_inference_time,  # temps total d'inference (mieux moyenne?)
+            inference_time=total_inference_time,  # temps total d'inference
         )
         return results
 

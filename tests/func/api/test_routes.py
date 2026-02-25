@@ -15,13 +15,19 @@ ou des erreurs de configuration.
 
 # Imports
 from typing import Any, Callable, Dict
+from unittest.mock import MagicMock, patch
 
+import numpy as np
+
+# Specifiquement pour la prediction par paquet
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models_db import PredictionRecord
+from app.utils.inference_process import batch_prediction_pipeline
 
 # ========================= PREDICT ==========================
 
@@ -133,6 +139,109 @@ async def test_predict_upload_csv_success(
     assert isinstance(data, list)
     assert len(data) == 2
     assert data[0]["prediction"] == 1
+
+
+# ============================================================
+
+
+# Cas particulier du BATCH_PREDICT
+@pytest.mark.integration
+def test_batch_prediction_vectorized_inference_logic(
+    db_session_for_tests, ml_model_mocked, input_preproc_mocked
+):
+    """
+    Vérifie que l'inférence vectorisée traite correctement un bloc de données
+    et que la persistance en base (Bulk Insert) est effective.
+    On ignore ici la partie cache (mockée pour retourner toujours None).
+    """
+    db = db_session_for_tests
+
+    # Préparation des données (3 lignes distinctes) + PAS en cache
+    data = [
+        {
+            "EXT_SOURCE_COUNT": 0.1,
+            "OWN_CAR_AGE": 12.0,
+            "AMT_ANNUITY": 5000.0,
+            "DAYS_BIRTH": -15000,
+            "NAME_FAMILY_STATUS": "Single",
+        },
+        {
+            "EXT_SOURCE_COUNT": 0.8,
+            "OWN_CAR_AGE": 2.0,
+            "AMT_ANNUITY": 45000.0,
+            "DAYS_BIRTH": -10000,
+            "NAME_FAMILY_STATUS": "Married",
+        },
+        {
+            "EXT_SOURCE_COUNT": 0.4,
+            "OWN_CAR_AGE": 5.0,
+            "AMT_ANNUITY": 20000.0,
+            "DAYS_BIRTH": -12000,
+            "NAME_FAMILY_STATUS": "Widow",
+        },
+    ]
+    df_test = pd.DataFrame(data)
+
+    # Mockage précis de l'inférence vectorisée
+    # On mock le modèle interne de l'instance wrapper (HGBM)
+    # predict_proba doit retourner un array (N_lignes, 2)
+    mock_probas = np.array(
+        [
+            [0.9, 0.1],  # Ligne 0 -> Solvable (0.1 < threshold)
+            [0.2, 0.8],  # Ligne 1 -> Insolvable (0.8 >= threshold)
+            [0.4, 0.6],  # Ligne 2 -> Insolvable (0.6 >= threshold)
+        ]
+    )
+
+    # On injecte le retour dans le modèle scikit-learn contenu dans le wrapper
+    ml_model_mocked.model.predict_proba = MagicMock(return_value=mock_probas)
+    ml_model_mocked.threshold = 0.5
+    ml_model_mocked.version = "v1_test_vector"
+
+    # Exécution du pipeline
+    # On patch 'get_prediction_id' pour simuler qu'aucune donnée n'est en cache (Inférence totale)
+    # On patch aussi le generateur de hash
+    with (
+        patch("app.utils.inference_process.get_prediction_id", return_value=None),
+        patch(
+            "app.utils.inference_process.generate_feature_hash",
+            side_effect=["hash_A", "hash_B", "hash_C"],
+        ),
+    ):
+        results, _ = batch_prediction_pipeline(
+            db=db,
+            model_instance=ml_model_mocked,
+            preproc=input_preproc_mocked,
+            df=df_test,
+            log_id=101,  # Le log_id servira pour la traçabilité dans RequestLog
+        )
+
+    # Assertions
+    # Vérification des résultats retournés par la fonction
+    assert len(results) == 3
+    assert results[0].prediction == 0
+    assert results[1].prediction == 1
+    assert results[1].confidence == 0.8  # Proba de la classe 1 envoyée par le mock
+
+    # Vérification que le modèle a bien été appelé de façon vectorisée (1 seule fois)
+    ml_model_mocked.model.predict_proba.assert_called_once()
+
+    # Vérification de la persistance via les HASHES
+    # On vérifie chaque record individuellement puisque c'est la clé primaire
+    rec_a = db.query(PredictionRecord).filter(PredictionRecord.id == "hash_A").first()
+    rec_b = db.query(PredictionRecord).filter(PredictionRecord.id == "hash_B").first()
+    rec_c = db.query(PredictionRecord).filter(PredictionRecord.id == "hash_C").first()
+
+    assert rec_a is not None
+    assert rec_b is not None
+    assert rec_c is not None
+
+    # Vérification du contenu d'un record (ex: la ligne 1 qui est insolvable)
+    assert rec_b.prediction == 1
+    assert rec_b.confidence == 0.8
+    assert rec_b.model_version == "v1_test_vector"
+    # Vérification que le dictionnaire inputs contient bien les données originales
+    assert rec_b.inputs["EXT_SOURCE_COUNT"] == 0.8
 
 
 # ============================================================
