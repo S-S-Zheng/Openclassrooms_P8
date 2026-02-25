@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.api.schemas import PredictionInput, PredictionOutput
 from app.db.database import get_db
+from app.utils.clean_for_json_db import clean_for_json
 from app.utils.inference_process import prediction_pipeline
 from app.utils.input_preproc import InputPreproc
 from app.utils.logger_db import closing_log, init_log
@@ -68,13 +69,17 @@ async def predict_manual(request: Request, payload: PredictionInput, db: Session
     try:
         # Instancie l'objet InputPreproc avec injection de la liste des features et l'ordre
         preproc = InputPreproc(model_instance.feature_names)
+
+        # NETTOYAGE JSON des données entrantes (pour éviter l'erreur NaN en DB)
+        raw_data = clean_for_json(payload.model_dump())
+
         # Pipeline de l'inférence avec préprocessing du dictionnaire d'entrée payload
         # .model_dump() récupère tout (champs obligatoires + extras autorisés)
         output, request_id, inference_time = prediction_pipeline(
             db=db,
             model_instance=model_instance,
             preproc=preproc,
-            raw_data=payload.model_dump(),
+            raw_data=raw_data,
             log_id=cast(int, log_entry.id),
         )
         closing_log(
@@ -193,7 +198,10 @@ async def predict_file(
 
         # Sequentiel simple
         for _, row in df.iterrows():
-            data_dict = row.to_dict()
+            # data_dict = row.to_dict()
+            # NETTOYAGE JSON de la ligne avant envoi au pipeline
+            data_dict = clean_for_json(row.to_dict())
+
             # Utilisation du pipeline pour chaque ligne du fichier
             output, _, inference_time = prediction_pipeline(
                 db=db,

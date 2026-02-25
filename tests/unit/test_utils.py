@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from app.utils.clean_for_json_db import clean_for_json
 from app.utils.features_type_list import features_type
 from app.utils.hash_id import generate_feature_hash
 from app.utils.save_load_datas import load_datas, save_datas
@@ -315,3 +316,39 @@ def test_load_json_fallback_to_dict(tmp_path, fake_dict):
 
     data, _ = load_datas(path)
     assert data == fake_dict
+
+
+# =========================== CLEAN_FOR_JSON_DB ======================================
+
+
+# Verifie que seul les NaN, inf... sont converti en None
+def test_clean_for_json_simple_nan():
+    data = {"a": 1, "b": np.nan, "c": float("inf")}
+    cleaned = clean_for_json(data)
+    assert cleaned["a"] == 1
+    assert cleaned["b"] is None
+    assert cleaned["c"] is None
+
+
+# =========================================================================
+
+
+# Converti les numpy en python standard
+def test_clean_for_json_numpy_types():
+    data = {"int": np.int64(42), "float": np.float32(10.5)}
+    cleaned = clean_for_json(data)
+    assert isinstance(cleaned["int"], int)
+    assert isinstance(cleaned["float"], float)
+    assert cleaned["int"] == 42
+
+
+# =========================================================================
+
+
+# Verifie que les sous-jacents sont aussi traité
+def test_clean_for_json_nested():
+    data = {"list": [1, np.nan, {"nested_inf": np.inf}], "dict": {"x": np.nan}}
+    cleaned = clean_for_json(data)
+    assert cleaned["list"][1] is None
+    assert cleaned["list"][2]["nested_inf"] is None
+    assert cleaned["dict"]["x"] is None

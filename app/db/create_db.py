@@ -22,6 +22,8 @@ sys.path.append(str(root_path))
 from app.db.base import Base  # noqa: E402 # Ruff veut les imports avant tout, pb ici
 from app.db.database import base_engine  # noqa: E402
 
+# Nécéssaires  pour que SQLAlchemy "découvre" les tables
+
 # ====================== Création de la DB ============================
 
 
