@@ -132,7 +132,7 @@ jobs:
           git add .gitattributes
           git add README.md
           git add Dockerfile
-          git add .dockeringnore
+          git add .dockerignore
           git add pyproject.toml poetry.lock
           git add app/
           git add datas/results/model/best_model.pkl
