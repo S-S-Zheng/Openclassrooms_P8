@@ -160,7 +160,7 @@ class PredictionOutput(BaseModel):
         ..., ge=0.0, le=1.0, description="Probabilité associée à la prédiction"
     )
     class_name: str = Field(..., description="solvable,insolvable")
-    latency_ms: Optional[float] = None
+    inference_time_ms: Optional[float] = None
 
 
 # ========================= METADATAS ===========================
