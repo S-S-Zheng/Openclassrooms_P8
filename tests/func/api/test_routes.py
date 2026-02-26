@@ -196,7 +196,7 @@ def test_batch_prediction_vectorized_inference_logic(
     # On injecte le retour dans le modèle scikit-learn contenu dans le wrapper
     ml_model_mocked.model.predict_proba = MagicMock(return_value=mock_probas)
     ml_model_mocked.threshold = 0.5
-    ml_model_mocked.version = "v1_test_vector"
+    ml_model_mocked.version = "v1.0.0"
 
     # Exécution du pipeline
     # On patch 'get_prediction_id' pour simuler qu'aucune donnée n'est en cache (Inférence totale)
@@ -239,7 +239,7 @@ def test_batch_prediction_vectorized_inference_logic(
     # Vérification du contenu d'un record (ex: la ligne 1 qui est insolvable)
     assert rec_b.prediction == 1
     assert rec_b.confidence == 0.8
-    assert rec_b.model_version == "v1_test_vector"
+    assert rec_b.model_version == "v1.0.0"
     # Vérification que le dictionnaire inputs contient bien les données originales
     assert rec_b.inputs["EXT_SOURCE_COUNT"] == 0.8
 

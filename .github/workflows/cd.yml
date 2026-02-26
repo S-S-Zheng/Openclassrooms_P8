@@ -83,6 +83,7 @@ jobs:
           # On initialise LFS
           git lfs install
 
+          # ======================================================================
           # # Nettoyage de l'index pour corriger le problème du .gitattributes illisible
           # # On dé-indexe le modèle et le fichier d'attributs corrompu
           # git rm --cached datas/results/model/best_model.pkl || echo "Fichier déjà hors index"
@@ -130,7 +131,11 @@ jobs:
           # On ajoute tout : Git voit le .gitattributes en premier et traite le .pkl en LFS
           git add .gitattributes
           git add README.md
-          git add .
+          git add Dockerfile
+          git add .dockeringnore
+          git add pyproject.toml poetry.lock
+          git add app/
+          git add datas/results/model/best_model.pkl
 
           git commit -m "Deploy clean state to HF" || echo "No changes"
 
