@@ -44,4 +44,10 @@ docs/_build/
 db_connection_test.py
 htmlcov
 .coverage
+notebooks/
+
+# Données
 datas/raw/
+datas/results/figures/
+datas/results/data_drift/
+datas/results/pipe_opt/

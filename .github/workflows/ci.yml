@@ -11,10 +11,10 @@ on:
     branches:
       - main
       - develop
-  pull_request:
-    branches:
-      - main
-    types: [synchronize, opened]
+  # pull_request:
+  #   branches:
+  #     - main
+  #   types: [synchronize, opened]
 
 # Variables d'environnement globales
 env:

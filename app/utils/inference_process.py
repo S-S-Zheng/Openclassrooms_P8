@@ -161,7 +161,7 @@ def batch_prediction_pipeline(
             )
             final_ordered_results[original_idx] = p_out
 
-            # Plus d'argument
+            # La sauvegarde dans la DB
             records_to_save.append(
                 PredictionRecord(
                     id=unique_id,
