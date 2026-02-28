@@ -46,7 +46,7 @@ class HGBM(BaseMLModel):
         self,
         model_path: Union[Path, str] = BASE_DIR / "model/best_model.pkl",
         feature_names_path: Union[Path, str] = BASE_DIR / "feature_names/feature_names.pkl",
-        threshold_path: Optional[Union[Path, str]] = BASE_DIR / "threshold_opt/thresh_opt.pkl",
+        threshold_path: Optional[Union[Path, str]] = BASE_DIR / "threshold_opt/thresh_opt.json",
     ):
         """
         Initialise les chemins vers les artefacts du modèle.
@@ -103,6 +103,10 @@ class HGBM(BaseMLModel):
         if self.threshold_path and Path(self.threshold_path).exists():
             # raw_threshold = joblib.load(self.threshold_path)
             raw_threshold, _ = load_datas(self.threshold_path)
+            # Extraction de la valeur si raw_threshold est un dictionnaire (json)
+            if isinstance(raw_threshold, dict):
+                # On cherche la clé 'threshold', sinon on prend la première valeur trouvée
+                raw_threshold = raw_threshold.get("threshold", list(raw_threshold.values())[0])
             # Conversion si c'est un array numpy
             self.threshold = (
                 float(raw_threshold.item())

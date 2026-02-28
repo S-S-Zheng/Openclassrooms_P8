@@ -13,7 +13,8 @@ from app.db.models_db import PredictionRecord
 from app.utils.clean_for_json_db import clean_for_json
 from app.utils.hash_id import generate_feature_hash
 from app.utils.input_preproc import InputPreproc
-from app.utils.logger_db import link_log
+
+# from app.utils.logger_db import link_log
 from app.utils.monitoring.profiling import get_profile
 
 # =========================== PREDICTION_SEQUENTIAL =====================
@@ -176,6 +177,7 @@ def batch_prediction_pipeline(
                     confidence=float(p_out.confidence),
                     class_name=p_out.class_name,
                     model_version="v1.0.0",
+                    log_id=log_id,
                     **sql_features,
                 )
             )
@@ -191,16 +193,17 @@ def batch_prediction_pipeline(
         # ICI : On reproduit la liaison de save_prediction
         # Pour un batch, on lie le log_id au hash de la PREMIÈRE ligne traitée
         # Cela permet d'avoir au moins un point d'entrée vers le set de données en DB
-        if log_id and first_processed_id:
-            link_log(db, log_id, first_processed_id)
-        db.commit()
+        #     if log_id and first_processed_id:
+        #         link_log(db, log_id, first_processed_id)
+        #     db.commit()
 
-    # Si tout était en cache, on lie quand même le log au premier résultat trouvé
-    elif log_id and len(df) > 0:
-        # On récupère le hash de la première ligne (qui était en cache)
-        first_row_clean = clean_for_json(df.iloc[0].to_dict())
-        first_hash = generate_feature_hash(first_row_clean)
-        link_log(db, log_id, first_hash)
+        # # Si tout était en cache, on lie quand même le log au premier résultat trouvé
+        # elif log_id and len(df) > 0:
+        #     # On récupère le hash de la première ligne (qui était en cache)
+        #     first_row_clean = clean_for_json(df.iloc[0].to_dict())
+        #     first_hash = generate_feature_hash(first_row_clean)
+        #     link_log(db, log_id, first_hash)
+        #     db.commit()
         db.commit()
 
     # Reconstruction de la liste dans l'ordre original du DataFrame

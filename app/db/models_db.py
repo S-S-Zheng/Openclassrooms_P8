@@ -37,6 +37,8 @@ class RequestLog(Base):
         response_time_ms (float): Temps de traitement de la requête en millisecondes.
         inference_time_ms (float): Temps d'inférence en ms
         prediction_id (str): Clé étrangère pointant vers l'ID unique de la prédiction associée.
+            Changement de logique, en cours de dépreciation!
+        log_id (str): Clé étrangère pointant vers l'ID de la requete associée.
         prediction_record (relationship): Relation ORM vers l'objet PredictionRecord correspondant.
     """
 
@@ -50,6 +52,8 @@ class RequestLog(Base):
     endpoint = Column(String, default="/predict")
     status_code = Column(Integer)
 
+    # Nombre d'inférence
+    inference_qty = Column(Integer)
     # Temps total (Route + DB + Modèle)
     response_time_ms = Column(Float)
     # Temps spécifique au calcul ML
@@ -61,7 +65,7 @@ class RequestLog(Base):
 
     # Relations
     # Crée une dépendance des ID avec la table predictions (permet la jointure)
-    prediction_id = Column(String(64), ForeignKey("predictions.id"))
+    # prediction_id = Column(String(64), ForeignKey("predictions.id"))
     # Créée une relation bidirectionnelle entre log et record
     prediction_record = relationship("PredictionRecord", back_populates="logs")
 
@@ -125,4 +129,8 @@ class PredictionRecord(Base):
 
     model_version = Column(String, default="v1.0.0")
 
+    # Relations
+    # Crée une dépendance des ID avec la table log (permet la jointure)
+    log_id = Column(Integer, ForeignKey("request_logs.id"), nullable=True)
+    # Créée une relation bidirectionnelle entre log et record
     logs = relationship("RequestLog", back_populates="prediction_record")

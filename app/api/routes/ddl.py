@@ -22,7 +22,6 @@ ROOT_DIR = Path(__file__).resolve().parents[3]  # equivalent a parent.parent.par
 REPORT_DIR = ROOT_DIR / "datas" / "results" / "profiling_reports"
 
 
-# Deux router get car filename est optionnel
 @router.get("/")
 @router.get("/{filename}")
 async def download_report(filename: Optional[str] = None):
@@ -53,6 +52,6 @@ async def download_report(filename: Optional[str] = None):
         return FileResponse(
             path=target_file,
             filename=target_file.name,
-            media_type="application/octet-stream",  # Force le téléchargement
+            media_type="text/html",  # "application/octet-stream",  # Force le téléchargement
         )
     raise HTTPException(status_code=404, detail="Rapport non trouvé.")

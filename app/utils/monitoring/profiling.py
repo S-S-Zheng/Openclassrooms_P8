@@ -2,6 +2,7 @@
 import cProfile
 import datetime
 import functools
+import inspect
 import io
 import os
 import pstats
@@ -21,9 +22,12 @@ def _htmling(func: Callable[..., Any], content: str) -> None:
     """
     Sauvegarde le contenu du profiling dans un fichier html.
     """
+    # timestamp: str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = str(f"profile_{func.__name__}")  # _{timestamp}"
+    print(f"--- PROFILING: Tentative de sauvegarde de {filename} ---")
     # Définition du chemin absolu de sauvegarde du html
-    root = Path(__file__).resolve().parent.parent.parent.parent
-    save_dir = root / "datas" / "results"
+    ROOT_DIR = Path(__file__).resolve().parents[3]
+    SAVE_DIR = ROOT_DIR / "datas" / "results"
     # Conversion minimaliste en HTML pour la lisibilité
     style = (
         "body { font-family: monospace; background-color: #1e1e1e; "
@@ -47,14 +51,32 @@ def _htmling(func: Callable[..., Any], content: str) -> None:
         """
 
     # Sauvegarde du rapport
-    timestamp: str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     save_datas(
         data=html_report,
-        folder_path=Path(save_dir),
+        folder_path=Path(SAVE_DIR),
         subs="profiling_reports",
-        filename=f"profile_{func.__name__}_{timestamp}",
+        filename=filename,
         format="html",
     )
+
+
+def _finalize_profiling(profiling: cProfile.Profile, func: Callable[..., Any]) -> None:
+    """
+    Cumul les dernières étapes du profilage
+    """
+    # Désactivation de cProfile
+    profiling.disable()
+    # Instanciation d'un fichier texte virtuel EN RAM
+    stream: io.StringIO = io.StringIO()
+    # Extraction et tri des statistiques par temps cumulé
+    stats: pstats.Stats = pstats.Stats(profiling, stream=stream)
+    stats.sort_stats(pstats.SortKey.CUMULATIVE)
+    # On prend les 30 premières lignes pour plus de détail
+    stats.print_stats(30)
+    # Récupération du rapport textuel
+    report_content: str = stream.getvalue()
+    # Sauvegarde dans un fichier log daté
+    _htmling(func, report_content)
 
 
 # ========================= Profiling ===========================
@@ -94,24 +116,23 @@ def get_profile(func: Callable[..., Any]) -> Callable[..., Any]:
         try:
             # Exécution de la fonction a profiler
             result = func(*args, **kwargs)
+            # SI ASYNC : On définit une fonction coroutine pour attendre le résultat
+            if inspect.iscoroutine(result):
+
+                async def wait_for_result():
+                    try:
+                        return await result
+                    finally:
+                        if is_profiling_active:
+                            _finalize_profiling(profiling, func)
+
+                return wait_for_result()
+            # SI SYNC : On retourne le résultat normalement
             return result
         finally:
-            if is_profiling_active:
-                # Désactivation de cProfile
-                profiling.disable()
-
-                # Instanciation d'un fichier texte virtuel EN RAM
-                stream: io.StringIO = io.StringIO()
-                # Extraction et tri des statistiques par temps cumulé
-                stats: pstats.Stats = pstats.Stats(profiling, stream=stream)
-                stats.sort_stats(pstats.SortKey.CUMULATIVE)
-                # On prend les 20 premières lignes pour plus de détail
-                stats.print_stats(20)
-
-                # Récupération du rapport textuel
-                report_content: str = stream.getvalue()
-
-                # Sauvegarde dans un fichier log daté
-                _htmling(func, report_content)
+            # On ne finalise ici QUE si ce n'est pas un objet async
+            # (car l'async finalisera dans wait_for_result)
+            if is_profiling_active and not inspect.iscoroutine(result):
+                _finalize_profiling(profiling, func)
 
     return cast(Callable[..., Any], wrapper)

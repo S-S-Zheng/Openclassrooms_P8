@@ -55,8 +55,9 @@ def closing_log(
     log_obj: RequestLog,
     start_time: float,
     status_code: Optional[int] = None,
-    prediction_id: Optional[str] = None,
+    # prediction_id: Optional[str] = None,
     inference_time: Optional[float] = None,
+    inference_qty: Optional[int] = None,
 ):
     """
     Finalise et persiste le log en base de données.
@@ -70,11 +71,16 @@ def closing_log(
         start_time (float): Le timestamp de début (provenant de `time.time()`).
         status_code (int, optional): Le code HTTP final. Si None, conserve la valeur initiale.
         prediction_id (str, optional): L'identifiant unique (hash) de la prédiction associée.
+        inference_qty (int, optional): Nombre d'inférence réalisée
     """
     # Code status
     if status_code is not None:
         # log_obj.status_code = int(status_code) # erreur Pylance VS SQLAlchemy
         log_obj.status_code = int(status_code)
+
+    # Nb d'inférence
+    if inference_qty is not None:
+        log_obj.inference_qty = int(inference_qty)
 
     # Calcul de la latence totale de l'API (Réseau + DB + Inférence)
     duration = (time.time() - start_time) * 1000
@@ -106,9 +112,9 @@ def closing_log(
     process = psutil.Process(os.getpid())
     log_obj.memory_usage = process.memory_info().rss / (1024 * 1024)  # type:ignore
 
-    if prediction_id:
-        # log_obj.prediction_id = str(prediction_id)
-        log_obj.prediction_id = str(prediction_id)
+    # if prediction_id:
+    #     # log_obj.prediction_id = str(prediction_id)
+    #     log_obj.prediction_id = str(prediction_id)
 
     db.commit()
 
