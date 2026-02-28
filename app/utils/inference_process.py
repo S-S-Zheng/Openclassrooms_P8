@@ -14,9 +14,13 @@ from app.utils.clean_for_json_db import clean_for_json
 from app.utils.hash_id import generate_feature_hash
 from app.utils.input_preproc import InputPreproc
 from app.utils.logger_db import link_log
-
+from app.utils.monitoring.profiling import get_profile
 
 # =========================== PREDICTION_SEQUENTIAL =====================
+
+
+# Décorateur de profiling
+@get_profile
 def prediction_pipeline(
     db: Session, model_instance: Any, preproc: InputPreproc, raw_data: Dict[str, Any], log_id: int
 ) -> Tuple[PredictionOutput, str, float]:
@@ -74,6 +78,8 @@ def prediction_pipeline(
 # =============== BATCH_PREDICTION =================================
 
 
+# Décorateur de profiling
+@get_profile
 def batch_prediction_pipeline(
     db: Session, model_instance: Any, preproc: InputPreproc, df: pd.DataFrame, log_id: int
 ) -> Tuple[List[PredictionOutput], float]:
@@ -161,7 +167,7 @@ def batch_prediction_pipeline(
             )
             final_ordered_results[original_idx] = p_out
 
-            # Plus d'argument
+            # La sauvegarde dans la DB
             records_to_save.append(
                 PredictionRecord(
                     id=unique_id,

@@ -1,6 +1,11 @@
+# Imports
 from typing import Any, List
 
 import pandas as pd
+
+from app.utils.monitoring.profiling import get_profile
+
+# ===========================================================
 
 
 class InputPreproc:
@@ -19,6 +24,7 @@ class InputPreproc:
         """
         self.feature_names = model_full_feature_names
 
+    @get_profile
     def process(self, data: Any) -> pd.DataFrame:
         """
         Prépare les données d'entrées.

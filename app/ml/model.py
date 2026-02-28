@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from app.utils.base_class_ml import BaseMLModel
+from app.utils.save_load_datas import load_datas
 
 # Récupère/crée logger avec nom du module courant (ex: __name__="model")
 logger = logging.getLogger(__name__)
@@ -90,7 +91,8 @@ class HGBM(BaseMLModel):
             if not Path(self.feature_names_path).exists():
                 logger.error(f"Fichier features absent: {self.feature_names_path}")
                 return
-            self.feature_names = joblib.load(self.feature_names_path)
+            # self.feature_names = joblib.load(self.feature_names_path)
+            self.feature_names, _ = load_datas(self.feature_names_path)
             logger.info(f"features chargées via {self.feature_names_path}")
             # Extirpe la liste des noms des features du pkl
             if isinstance(self.feature_names, dict):
@@ -99,7 +101,8 @@ class HGBM(BaseMLModel):
 
         # Charge le seuil de validation
         if self.threshold_path and Path(self.threshold_path).exists():
-            raw_threshold = joblib.load(self.threshold_path)
+            # raw_threshold = joblib.load(self.threshold_path)
+            raw_threshold, _ = load_datas(self.threshold_path)
             # Conversion si c'est un array numpy
             self.threshold = (
                 float(raw_threshold.item())
