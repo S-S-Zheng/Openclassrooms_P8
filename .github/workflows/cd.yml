@@ -136,6 +136,7 @@ jobs:
           git add pyproject.toml poetry.lock
           git add app/
           git add datas/results/model/best_model.pkl
+          git add datas/results/threshold_opt/thresh_opt.json
 
           git commit -m "Deploy clean state to HF" || echo "No changes"
 

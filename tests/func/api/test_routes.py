@@ -157,6 +157,15 @@ def test_batch_prediction_vectorized_inference_logic(
     """
     db = db_session_for_tests
 
+    # --- ÉTAPE PRÉALABLE : CRÉER LE LOG PARENT ---
+    # Sans cela, la FK dans 'predictions' fera échouer le test
+    from app.db.models_db import RequestLog
+
+    test_log = RequestLog(id=101, endpoint="/predict/upload", status_code=200)
+    db.add(test_log)
+    db.commit()  # On commit pour être sûr que le log existe en DB
+    # --------------------------------------------
+
     # Préparation des données (3 lignes distinctes) + PAS en cache
     data = [
         {
@@ -214,7 +223,7 @@ def test_batch_prediction_vectorized_inference_logic(
             model_instance=ml_model_mocked,
             preproc=input_preproc_mocked,
             df=df_test,
-            log_id=101,  # Le log_id servira pour la traçabilité dans RequestLog
+            log_id=test_log.id,  # Le log_id servira pour la traçabilité dans RequestLog
         )
 
     # Assertions

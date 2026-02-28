@@ -73,6 +73,7 @@ def save_prediction(db: Session, features: dict, pred_data: tuple, log_id: int):
                 prediction=int(prediction),
                 confidence=float(confidence),
                 class_name=class_name,
+                log_id=log_id,
                 **sql_features,  # On unpack les features définies
             )
             db.add(new_record)

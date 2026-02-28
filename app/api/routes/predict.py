@@ -31,7 +31,7 @@ router = APIRouter(prefix="/predict", tags=["Prediction"])
 @router.post("/manual", response_model=PredictionOutput)
 async def predict_manual(request: Request, payload: PredictionInput, db: Session = Depends(get_db)):
     """
-    Gère une requête manuelle unique avec validation Pydantic et Cache.
+    Gère une requête manuelle UNIQUE avec validation Pydantic et Cache.
 
     Cette méthode suit la pipeline suivante :
 
@@ -87,8 +87,9 @@ async def predict_manual(request: Request, payload: PredictionInput, db: Session
             log_entry,
             start_time,
             status_code=200,
-            prediction_id=request_id,
+            # prediction_id=request_id,
             inference_time=inference_time,
+            inference_qty=1,  # inférence unique
         )
         return output
 
@@ -173,6 +174,7 @@ async def predict_file(
             start_time,
             status_code=200,
             inference_time=total_inference_time,  # temps total d'inference
+            inference_qty=len(df),
         )
         return results
 

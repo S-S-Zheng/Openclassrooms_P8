@@ -340,8 +340,12 @@ def test_import_csv_unique(fake_csv, TestingSession, monkeypatch, TestingEngine)
 
     # On clean les tables avant de lancer le test (à cause de la fixture init)
     with TestingSession() as session:
-        session.execute(delete(RequestLog))
+        # on a inversé la logique de lien et comme SQL ne permet pas de supprimer un parent
+        # avan les enfants, il suffit juste d'inverser la logique.
+        # session.execute(delete(RequestLog))
+        # session.execute(delete(PredictionRecord))
         session.execute(delete(PredictionRecord))
+        session.execute(delete(RequestLog))
         session.commit()
 
     # On importe deux fois, le premier devrait etre bon seulement

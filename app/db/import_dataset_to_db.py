@@ -107,6 +107,7 @@ def import_historical_data(file_path: Union[Path, str]):
                     "confidence": 1.0,  # données historique donc forcement 1.0
                     "class_name": "insolvable" if target == 1 else "solvable",
                     "TARGET": (int(target) if target is not None else None),
+                    "log_id": log_entry.id,
                 }
                 # --------- Dangereux pour 800+ features ----------
                 # assemble.update(features)
