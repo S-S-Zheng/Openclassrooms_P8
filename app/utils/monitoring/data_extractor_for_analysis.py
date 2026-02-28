@@ -58,6 +58,8 @@ class DataProvider:
         Indispensable avant de les passer à Evidently.
         """
         common_cols = list(set(reference.columns) & set(current.columns))
+        if not common_cols:
+            raise ValueError("Aucune colonne commune trouvée entre les deux datasets.")
         # On trie pour garantir l'ordre des colonnes
         common_cols.sort()
         return reference[common_cols], current[common_cols]

@@ -14,10 +14,12 @@ from sqlalchemy.orm import Session
 from app.db.models_db import PredictionRecord
 from app.utils.hash_id import generate_feature_hash
 from app.utils.logger_db import link_log
+from app.utils.monitoring.profiling import get_profile
 
 # ==========================
 
 
+@get_profile
 def save_prediction(db: Session, features: dict, pred_data: tuple, log_id: int):
     """
     Enregistre une nouvelle prédiction et la lie à un log d'activité.

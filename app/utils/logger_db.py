@@ -20,6 +20,7 @@ import psutil
 from sqlalchemy.orm import Session
 
 from app.db.models_db import RequestLog
+from app.utils.monitoring.profiling import get_profile
 
 # ============== Initalise le log ======================
 
@@ -48,6 +49,7 @@ def init_log(db: Session, endpoint: str) -> RequestLog:
 # ================ Finalise le log =======================
 
 
+@get_profile
 def closing_log(
     db: Session,
     log_obj: RequestLog,

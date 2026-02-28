@@ -68,6 +68,7 @@ def test_predict_success(
 
 
 # Erreurs
+@pytest.mark.integration
 def test_predict_errors(
     client: TestClient,
     mock_ml_model: Callable[..., Any],

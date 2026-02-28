@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
+from app.api.routes.ddl import router as reports_router
 from app.api.routes.model_info import router as model_info_router
 from app.api.routes.predict import router as predict_router
 from app.ml.model import HGBM
@@ -69,7 +70,7 @@ app = FastAPI(
 # Inclusion des modules de routes pour une architecture modulaire et scalable
 app.include_router(predict_router)
 app.include_router(model_info_router)
-
+app.include_router(reports_router)
 
 # ==================== Endpoints Génériques ========================
 

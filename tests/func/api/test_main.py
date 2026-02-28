@@ -9,9 +9,12 @@ Ce module valide les fonctionnalités de base de l'infrastructure FastAPI :
 """
 
 # Imports
-
+import pytest
 
 # =================== Health =======================
+
+
+@pytest.mark.integration
 # On s'assure que /health est fonctionnelle: code 200
 # On s'assure que la réponse est bien status:ok
 def test_healthcheck(client):
@@ -28,6 +31,9 @@ def test_healthcheck(client):
 
 
 # =================== Root =======================
+
+
+@pytest.mark.integration
 def test_root_redirects_to_docs(client):
     """
     Vérifie la redirection automatique de la racine.
@@ -43,6 +49,9 @@ def test_root_redirects_to_docs(client):
 
 
 # =================== Lifespan =======================
+
+
+@pytest.mark.integration
 def test_lifespan_startup(client):
     """
     Valide l'initialisation du contexte de l'application.

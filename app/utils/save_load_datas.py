@@ -15,7 +15,7 @@ def save_datas(
     folder_path: Path,
     subs: str = "",
     filename: str = "",
-    format: Literal["parquet", "joblib", "json", "csv", "yml", "yaml"] = "csv",
+    format: Literal["parquet", "joblib", "json", "csv", "yml", "yaml", "html", "txt"] = "csv",
 ) -> Optional[Path]:
     """
     Eporte la dataframe vers le chemin spécifié
@@ -25,7 +25,7 @@ def save_datas(
         folder_path(Path): chemin du dossier a destination
         subs(str): sous-dossier
         filename(str): nom du fichier
-        format(Literal["parquet","joblib","json","csv","yml","yaml"]):
+        format(Literal["parquet","joblib","json","csv","yml","yaml", "html", "txt"]):
             format de sauvegarde. par défaut: csv
 
     Returns:
@@ -56,6 +56,9 @@ def save_datas(
         elif format == "yaml" or format == "yml":
             with open(filename_path, "w") as f:
                 yaml.dump(data, f, indent=4)
+        elif format in ["html", "txt"]:
+            with open(filename_path, "w", encoding="utf-8") as f:
+                f.write(str(data))
         else:
             return None
     except Exception as e:

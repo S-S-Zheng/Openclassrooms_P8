@@ -41,7 +41,10 @@ from app.db.models_db import PredictionRecord, RequestLog  # noqa: F401
 from app.main import app
 from app.ml.model import HGBM
 from app.utils.input_preproc import InputPreproc
+from app.utils.monitoring.data_extractor_for_analysis import DataProvider
 
+# Empeche le profiling pendant les tests
+os.environ["ENABLE_PROFILING"] = "false"
 # Force le chargement explicite avant toute initialisation de moteur DB
 load_dotenv(".env.test", override=True)
 
@@ -76,6 +79,16 @@ def fake_dict():
 @pytest.fixture
 def fake_df(fake_dict):
     return pd.DataFrame([fake_dict])
+
+
+# Fonction imbriqué nécéssaire car sinon on peut pas vérif que le wrapper transmet
+# correctement l'information (profiling)
+@pytest.fixture
+def fake_func():
+    def _func(x=1):
+        return x
+
+    return _func
 
 
 @pytest.fixture
@@ -353,6 +366,30 @@ def mock_ml_model(ml_model_mocked: HGBM, hgbm_instance_mock: MagicMock) -> Calla
         return ml_model_mocked
 
     return _factory
+
+
+# Dossier temporaire pour les rapports
+@pytest.fixture
+def mock_reports_dir(tmp_path, monkeypatch):
+    """
+    Prépare un dossier de rapports temporaire et redirige la constante
+    REPORT_DIR du module ddl vers ce dossier.
+    """
+    # Création du dossier temporaire
+    report_dir = tmp_path / "reports_test"
+    report_dir.mkdir()
+
+    # Redirection de la constante dans le module
+    import_path = "app.api.routes.ddl.REPORT_DIR"
+    monkeypatch.setattr(import_path, report_dir)
+
+    return report_dir
+
+
+@pytest.fixture
+def provider():
+    """Initialise le DataProvider pour les tests."""
+    return DataProvider()
 
 
 # ========================= DB (POSTGRES TEST) ==============================
